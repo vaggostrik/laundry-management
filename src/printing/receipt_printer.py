@@ -5,7 +5,7 @@ Supports: physical printer (via QPrintDialog) and PDF export.
 """
 import logging
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
-from PyQt6.QtGui import QPainter, QFont
+from PyQt6.QtGui import QPainter, QFont, QPageSize
 from PyQt6.QtWidgets import QDialog, QFileDialog
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class ReceiptPrinter:
             painter.drawText(x, y, line)
             y += line_h
             # New page if we're past the bottom margin
-            if y > printer.pageRect(QPrinter.Unit.DevicePixel).height() - 100:
+            if y > printer.pageLayout().paintRectPixels(printer.resolution()).height() - 100:
                 printer.newPage()
                 y = 100
         painter.end()
@@ -69,7 +69,7 @@ class ReceiptPrinter:
     def print_receipt(self, order, parent=None) -> bool:
         """Open the system print dialog and print to the selected printer."""
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-        printer.setPageSize(QPrinter.PageSize.A4)
+        printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
 
         dlg = QPrintDialog(printer, parent)
         dlg.setWindowTitle("Εκτύπωση Απόδειξης")
@@ -93,7 +93,7 @@ class ReceiptPrinter:
             return False
 
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-        printer.setPageSize(QPrinter.PageSize.A4)
+        printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
         printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
         printer.setOutputFileName(path)
 
