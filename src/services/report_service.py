@@ -32,15 +32,15 @@ class ReportService:
         try:
             with open(file_path, 'w', newline='', encoding='utf-8-sig') as f:
                 writer = csv.writer(f)
-                writer.writerow(["Περίοδος", "Αρ. Παραγγελιών", "Σύνολο"])
+                writer.writerow(["Περίοδος", "Αρ. Παραγγελιών", f"Σύνολο ({currency})"])
                 for row in rows:
                     writer.writerow([
                         row.get('period', ''),
                         row.get('order_count', 0),
-                        f"{row.get('total', 0):.2f}{currency}"
+                        round(row.get('total', 0), 2),
                     ])
                 writer.writerow([])
-                writer.writerow(["Γενικό Σύνολο", "", f"{total:.2f}{currency}"])
+                writer.writerow(["Γενικό Σύνολο", "", round(total, 2)])
             logger.info("Εξαγωγή CSV: %s", file_path)
         except Exception as e:
             logger.error("Σφάλμα εξαγωγής CSV: %s", e, exc_info=True)
