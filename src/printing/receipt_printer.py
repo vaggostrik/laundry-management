@@ -6,7 +6,7 @@ Supports: physical printer (via QPrintDialog) and PDF export.
 import logging
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
 from PyQt6.QtGui import QPainter, QFont
-from PyQt6.QtWidgets import QFileDialog
+from PyQt6.QtWidgets import QDialog, QFileDialog
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class ReceiptPrinter:
 
         dlg = QPrintDialog(printer, parent)
         dlg.setWindowTitle("Εκτύπωση Απόδειξης")
-        if dlg.exec() != QPrintDialog.DialogCode.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             return False
 
         lines = self.build_receipt_lines(order)
