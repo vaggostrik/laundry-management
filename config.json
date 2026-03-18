@@ -1,0 +1,91 @@
+{
+  "store": {
+    "name": "Πλυντήριο Κωνσταντίνου",
+    "address": "Οδός Παπαδιαμάντη 12, Αθήνα 10000",
+    "phone": "210-1234567",
+    "tax_number": "123456789",
+    "receipt_footer": "Ευχαριστούμε για την εμπιστοσύνη σας!"
+  },
+  "pricing": {
+    "categories": [
+      {
+        "key": "shirts",
+        "label": "Πουκάμισα",
+        "services": {
+          "wash_iron": {"label": "Πλύσιμο & Σιδέρωμα", "price": 3.50},
+          "wash_only": {"label": "Μόνο Πλύσιμο", "price": 2.00},
+          "dry_clean": {"label": "Στεγνό Καθάρισμα", "price": 5.00}
+        }
+      },
+      {
+        "key": "trousers",
+        "label": "Παντελόνια",
+        "services": {
+          "wash_iron": {"label": "Πλύσιμο & Σιδέρωμα", "price": 4.00},
+          "wash_only": {"label": "Μόνο Πλύσιμο", "price": 2.50},
+          "dry_clean": {"label": "Στεγνό Καθάρισμα", "price": 6.50}
+        }
+      },
+      {
+        "key": "suits",
+        "label": "Κοστούμια",
+        "services": {
+          "dry_clean": {"label": "Στεγνό Καθάρισμα", "price": 14.00},
+          "wash_iron": {"label": "Πλύσιμο & Σιδέρωμα", "price": 10.00}
+        }
+      },
+      {
+        "key": "blankets",
+        "label": "Κουβέρτες",
+        "services": {
+          "wash_only": {"label": "Μόνο Πλύσιμο", "price": 8.00}
+        }
+      },
+      {
+        "key": "jackets",
+        "label": "Σακάκια",
+        "services": {
+          "dry_clean": {"label": "Στεγνό Καθάρισμα", "price": 9.00},
+          "wash_iron": {"label": "Πλύσιμο & Σιδέρωμα", "price": 7.00}
+        }
+      },
+      {
+        "key": "dresses",
+        "label": "Φορέματα",
+        "services": {
+          "dry_clean": {"label": "Στεγνό Καθάρισμα", "price": 12.00},
+          "wash_iron": {"label": "Πλύσιμο & Σιδέρωμα", "price": 6.00},
+          "wash_only": {"label": "Μόνο Πλύσιμο", "price": 3.50}
+        }
+      },
+      {
+        "key": "ties",
+        "label": "Γραβάτες",
+        "services": {
+          "dry_clean": {"label": "Στεγνό Καθάρισμα", "price": 4.00}
+        }
+      },
+      {
+        "key": "curtains",
+        "label": "Κουρτίνες",
+        "services": {
+          "wash_only": {"label": "Μόνο Πλύσιμο", "price": 10.00},
+          "dry_clean": {"label": "Στεγνό Καθάρισμα", "price": 15.00}
+        }
+      }
+    ],
+    "service_types": {
+      "wash_iron": "Πλύσιμο & Σιδέρωμα",
+      "wash_only": "Μόνο Πλύσιμο",
+      "dry_clean": "Στεγνό Καθάρισμα"
+    }
+  },
+  "app": {
+    "db_path": "laundry.db",
+    "log_level": "INFO",
+    "receipt_copies": 1,
+    "currency_symbol": "€",
+    "date_format": "%d/%m/%Y",
+    "datetime_format": "%d/%m/%Y %H:%M"
+  }
+}

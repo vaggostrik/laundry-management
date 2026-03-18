@@ -1,0 +1,163 @@
+/* ── Global ─────────────────────────────────────────────────────────────── */
+QMainWindow, QWidget {
+    background-color: #f5f5f5;
+    font-family: "Segoe UI", "DejaVu Sans", sans-serif;
+    font-size: 10pt;
+    color: #2c3e50;
+}
+
+QDialog {
+    background-color: #f5f5f5;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+QFrame#sidebar {
+    background-color: #2c3e50;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+QTableWidget {
+    background: white;
+    gridline-color: #e0e0e0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    alternate-background-color: #f9f9f9;
+}
+
+QHeaderView::section {
+    background-color: #34495e;
+    color: white;
+    padding: 6px 8px;
+    border: none;
+    font-weight: bold;
+}
+
+QTableWidget::item:selected {
+    background-color: #3498db;
+    color: white;
+}
+
+QTableWidget::item {
+    padding: 4px 8px;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
+QLineEdit, QTextEdit, QComboBox, QSpinBox, QDateEdit {
+    background: white;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus,
+QSpinBox:focus, QDateEdit:focus {
+    border-color: #3498db;
+}
+
+QComboBox::drop-down {
+    border: none;
+    padding-right: 4px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+QPushButton {
+    background: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    padding: 6px 14px;
+    color: #2c3e50;
+}
+
+QPushButton:hover {
+    background: #d5dbdb;
+}
+
+QPushButton:pressed {
+    background: #bdc3c7;
+}
+
+QPushButton:disabled {
+    background: #ecf0f1;
+    color: #bdc3c7;
+}
+
+/* ── Group boxes ─────────────────────────────────────────────────────────── */
+QGroupBox {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    font-weight: bold;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+    color: #34495e;
+}
+
+/* ── Tab widget ──────────────────────────────────────────────────────────── */
+QTabWidget::pane {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+}
+
+QTabBar::tab {
+    background: #ecf0f1;
+    border: 1px solid #ddd;
+    padding: 8px 16px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+QTabBar::tab:selected {
+    background: white;
+    border-bottom-color: white;
+    font-weight: bold;
+    color: #3498db;
+}
+
+QTabBar::tab:hover:!selected {
+    background: #d5dbdb;
+}
+
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+QScrollBar:vertical {
+    background: #f5f5f5;
+    width: 10px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical {
+    background: #bdc3c7;
+    border-radius: 5px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #95a5a6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+/* ── Message boxes ───────────────────────────────────────────────────────── */
+QMessageBox {
+    background-color: white;
+}
+
+/* ── Tree widget (pricing) ───────────────────────────────────────────────── */
+QTreeWidget {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    alternate-background-color: #f9f9f9;
+}
+
+QTreeWidget::item:selected {
+    background-color: #3498db;
+    color: white;
+}
