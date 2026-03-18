@@ -130,39 +130,25 @@ class NewOrderDialog(QDialog):
         row = self._items_table.rowCount()
         self._items_table.insertRow(row)
 
-        # Category combobox
         cat_combo = QComboBox()
-        categories = self._config.pricing_categories
-        for cat in categories:
+        for cat in self._config.pricing_categories:
             cat_combo.addItem(cat['label'], cat['key'])
 
-        # Service combobox
         svc_combo = QComboBox()
 
-        def update_services(idx, cc=cat_combo, sc=svc_combo):
-            cat_key = cc.currentData()
-            services = self._config.get_category_services(cat_key)
-            sc.clear()
-            for svc_key, svc_data in services.items():
-                sc.addItem(svc_data['label'], svc_key)
-            self._update_row_price(self._items_table.indexAt(cc.pos()).row()
-                                   if hasattr(cc, 'pos') else
-                                   self._find_row(cc))
-
-        cat_combo.currentIndexChanged.connect(lambda idx, r=row: self._on_category_changed(r))
-        svc_combo.currentIndexChanged.connect(lambda idx, r=row: self._on_service_changed(r))
-
-        # Quantity spinbox
         qty_spin = QSpinBox()
         qty_spin.setMinimum(1)
         qty_spin.setMaximum(999)
         qty_spin.setValue(1)
-        qty_spin.valueChanged.connect(lambda val, r=row: self._update_row_price(r))
 
-        # Price and subtotal labels
-        price_item   = QTableWidgetItem("€0.00")
-        price_item.setFlags(price_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        # sender()-based dispatch — αξιόπιστο για οποιοδήποτε αριθμό γραμμών
+        cat_combo.currentIndexChanged.connect(self._on_any_category_changed)
+        svc_combo.currentIndexChanged.connect(self._on_any_service_changed)
+        qty_spin.valueChanged.connect(self._on_any_qty_changed)
+
+        price_item    = QTableWidgetItem("€0.00")
         subtotal_item = QTableWidgetItem("€0.00")
+        price_item.setFlags(price_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         subtotal_item.setFlags(subtotal_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
 
         self._items_table.setCellWidget(row, 0, cat_combo)
@@ -171,33 +157,47 @@ class NewOrderDialog(QDialog):
         self._items_table.setItem(row, 3, price_item)
         self._items_table.setItem(row, 4, subtotal_item)
 
-        # Initialize services for first category
-        self._populate_services(row)
+        self._populate_services_for(cat_combo, svc_combo)
         self._update_row_price(row)
 
-    def _populate_services(self, row: int) -> None:
-        cat_combo = self._items_table.cellWidget(row, 0)
-        svc_combo = self._items_table.cellWidget(row, 1)
-        if not cat_combo or not svc_combo:
-            return
-        cat_key = cat_combo.currentData()
+    def _find_row_for_widget(self, widget) -> int:
+        """Βρίσκει δυναμικά σε ποιο row ανήκει ένα cell widget."""
+        for r in range(self._items_table.rowCount()):
+            for c in range(3):
+                if self._items_table.cellWidget(r, c) is widget:
+                    return r
+        return -1
+
+    def _populate_services_for(self, cat_combo, svc_combo) -> None:
+        """Γεμίζει το svc_combo βάσει της επιλεγμένης κατηγορίας."""
+        cat_key  = cat_combo.currentData()
         services = self._config.get_category_services(cat_key)
         svc_combo.blockSignals(True)
         svc_combo.clear()
         for svc_key, svc_data in services.items():
             svc_combo.addItem(svc_data['label'], svc_key)
-        # Ρητά ορίζουμε index=0 — σε ορισμένες εκδόσεις PyQt6 το addItem
-        # με blocked signals αφήνει currentIndex=-1, οπότε currentData()=None
         if svc_combo.count() > 0:
             svc_combo.setCurrentIndex(0)
         svc_combo.blockSignals(False)
 
-    def _on_category_changed(self, row: int) -> None:
-        self._populate_services(row)
+    def _on_any_category_changed(self, _idx: int) -> None:
+        cat_combo = self.sender()
+        row = self._find_row_for_widget(cat_combo)
+        if row == -1:
+            return
+        svc_combo = self._items_table.cellWidget(row, 1)
+        self._populate_services_for(cat_combo, svc_combo)
         self._update_row_price(row)
 
-    def _on_service_changed(self, row: int) -> None:
-        self._update_row_price(row)
+    def _on_any_service_changed(self, _idx: int) -> None:
+        row = self._find_row_for_widget(self.sender())
+        if row != -1:
+            self._update_row_price(row)
+
+    def _on_any_qty_changed(self, _val: int) -> None:
+        row = self._find_row_for_widget(self.sender())
+        if row != -1:
+            self._update_row_price(row)
 
     def _update_row_price(self, row: int) -> None:
         cat_combo = self._items_table.cellWidget(row, 0)
@@ -234,12 +234,6 @@ class NewOrderDialog(QDialog):
                 except ValueError:
                     pass
         self._total_label.setText(f"Σύνολο: {sym}{total:.2f}")
-
-    def _find_row(self, widget) -> int:
-        for row in range(self._items_table.rowCount()):
-            if self._items_table.cellWidget(row, 0) is widget:
-                return row
-        return 0
 
     def _on_new_customer(self) -> None:
         from src.ui.customer_widget import CustomerFormDialog
