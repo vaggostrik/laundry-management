@@ -43,6 +43,7 @@ class ReceiptDialog(QDialog):
 
         # Buttons
         btn_layout = QHBoxLayout()
+
         print_btn = QPushButton("🖨️  Εκτύπωση")
         print_btn.setStyleSheet(
             "QPushButton { background: #3498db; color: white; border-radius: 4px; "
@@ -52,6 +53,15 @@ class ReceiptDialog(QDialog):
         print_btn.clicked.connect(self._on_print)
         btn_layout.addWidget(print_btn)
 
+        pdf_btn = QPushButton("📄  Αποθήκευση PDF")
+        pdf_btn.setStyleSheet(
+            "QPushButton { background: #27ae60; color: white; border-radius: 4px; "
+            "padding: 8px 16px; font-weight: bold; }"
+            "QPushButton:hover { background: #229954; }"
+        )
+        pdf_btn.clicked.connect(self._on_save_pdf)
+        btn_layout.addWidget(pdf_btn)
+
         close_btn = QPushButton("Κλείσιμο")
         close_btn.clicked.connect(self.accept)
         btn_layout.addWidget(close_btn)
@@ -59,10 +69,22 @@ class ReceiptDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def _on_print(self) -> None:
+        from PyQt6.QtWidgets import QMessageBox
         try:
             self._printer.print_receipt(self._order, parent=self)
         except Exception as e:
             logger.error("Σφάλμα εκτύπωσης: %s", e, exc_info=True)
-            from PyQt6.QtWidgets import QMessageBox
             QMessageBox.critical(self, "Σφάλμα Εκτύπωσης",
-                                 f"Δεν ήταν δυνατή η εκτύπωση.\n{e}")
+                                 f"Δεν ήταν δυνατή η εκτύπωση.\n\n{e}")
+
+    def _on_save_pdf(self) -> None:
+        from PyQt6.QtWidgets import QMessageBox
+        try:
+            saved = self._printer.save_as_pdf(self._order, parent=self)
+            if saved:
+                QMessageBox.information(self, "Επιτυχία",
+                                        "Η απόδειξη αποθηκεύτηκε ως PDF.")
+        except Exception as e:
+            logger.error("Σφάλμα αποθήκευσης PDF: %s", e, exc_info=True)
+            QMessageBox.critical(self, "Σφάλμα",
+                                 f"Δεν ήταν δυνατή η αποθήκευση PDF.\n\n{e}")

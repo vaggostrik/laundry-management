@@ -116,12 +116,98 @@ class Config:
 
     # ── Writers ──────────────────────────────────────────────────────────────
 
+    def _save(self) -> None:
+        with open(self._path, 'w', encoding='utf-8') as f:
+            json.dump(self._data, f, ensure_ascii=False, indent=2)
+
     def write_store_settings(self, data: dict) -> None:
         try:
             self._data['store'] = data
-            with open(self._path, 'w', encoding='utf-8') as f:
-                json.dump(self._data, f, ensure_ascii=False, indent=2)
+            self._save()
             logger.info("Αποθηκεύτηκαν ρυθμίσεις καταστήματος")
         except Exception as e:
             logger.error("Σφάλμα αποθήκευσης config: %s", e, exc_info=True)
             raise
+
+    # ── Pricing writers ───────────────────────────────────────────────────────
+
+    def _pricing_categories_list(self) -> list:
+        return self._data.setdefault('pricing', {}).setdefault('categories', [])
+
+    def add_category(self, key: str, label: str) -> None:
+        cats = self._pricing_categories_list()
+        if any(c['key'] == key for c in cats):
+            raise ValueError(f"Υπάρχει ήδη κατηγορία με key '{key}'")
+        cats.append({'key': key, 'label': label, 'services': {}})
+        self._save()
+        logger.info("Νέα κατηγορία: %s (%s)", label, key)
+
+    def update_category(self, old_key: str, new_key: str, new_label: str) -> None:
+        cats = self._pricing_categories_list()
+        if new_key != old_key and any(c['key'] == new_key for c in cats):
+            raise ValueError(f"Υπάρχει ήδη κατηγορία με key '{new_key}'")
+        for cat in cats:
+            if cat['key'] == old_key:
+                cat['key'] = new_key
+                cat['label'] = new_label
+                self._save()
+                logger.info("Ενημέρωση κατηγορίας: %s → %s", old_key, new_key)
+                return
+        raise ValueError(f"Κατηγορία '{old_key}' δεν βρέθηκε")
+
+    def delete_category(self, key: str) -> None:
+        cats = self._pricing_categories_list()
+        before = len(cats)
+        self._data['pricing']['categories'] = [c for c in cats if c['key'] != key]
+        if len(self._data['pricing']['categories']) == before:
+            raise ValueError(f"Κατηγορία '{key}' δεν βρέθηκε")
+        self._save()
+        logger.info("Διαγραφή κατηγορίας: %s", key)
+
+    def add_service(self, cat_key: str, svc_key: str,
+                    svc_label: str, price: float) -> None:
+        for cat in self._pricing_categories_list():
+            if cat['key'] == cat_key:
+                if svc_key in cat.get('services', {}):
+                    raise ValueError(
+                        f"Υπάρχει ήδη υπηρεσία '{svc_key}' στην κατηγορία '{cat_key}'")
+                cat.setdefault('services', {})[svc_key] = {
+                    'label': svc_label, 'price': price}
+                self._save()
+                logger.info("Νέα υπηρεσία %s/%s", cat_key, svc_key)
+                return
+        raise ValueError(f"Κατηγορία '{cat_key}' δεν βρέθηκε")
+
+    def update_service(self, cat_key: str, old_svc_key: str,
+                       new_svc_key: str, new_label: str, new_price: float) -> None:
+        for cat in self._pricing_categories_list():
+            if cat['key'] == cat_key:
+                svcs = cat.setdefault('services', {})
+                if old_svc_key not in svcs:
+                    raise ValueError(f"Υπηρεσία '{old_svc_key}' δεν βρέθηκε")
+                if new_svc_key != old_svc_key and new_svc_key in svcs:
+                    raise ValueError(f"Υπάρχει ήδη υπηρεσία '{new_svc_key}'")
+                # Preserve order: rebuild dict with new key
+                new_svcs = {}
+                for k, v in svcs.items():
+                    if k == old_svc_key:
+                        new_svcs[new_svc_key] = {'label': new_label, 'price': new_price}
+                    else:
+                        new_svcs[k] = v
+                cat['services'] = new_svcs
+                self._save()
+                logger.info("Ενημέρωση υπηρεσίας %s/%s → %s",
+                            cat_key, old_svc_key, new_svc_key)
+                return
+        raise ValueError(f"Κατηγορία '{cat_key}' δεν βρέθηκε")
+
+    def delete_service(self, cat_key: str, svc_key: str) -> None:
+        for cat in self._pricing_categories_list():
+            if cat['key'] == cat_key:
+                if svc_key not in cat.get('services', {}):
+                    raise ValueError(f"Υπηρεσία '{svc_key}' δεν βρέθηκε")
+                del cat['services'][svc_key]
+                self._save()
+                logger.info("Διαγραφή υπηρεσίας %s/%s", cat_key, svc_key)
+                return
+        raise ValueError(f"Κατηγορία '{cat_key}' δεν βρέθηκε")

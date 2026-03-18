@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Receipt printing via QPrinter + QPainter.
+Supports: physical printer (via QPrintDialog) and PDF export.
 """
 import logging
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
 from PyQt6.QtGui import QPainter, QFont
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QFileDialog
 
 logger = logging.getLogger(__name__)
 
@@ -18,56 +19,85 @@ class ReceiptPrinter:
         sym = self._config.currency_symbol
         lines = []
         lines.append(self._config.store_name)
-        lines.append(self._config.store_address)
-        lines.append(f"Τηλ: {self._config.store_phone}")
+        if self._config.store_address:
+            lines.append(self._config.store_address)
+        if self._config.store_phone:
+            lines.append(f"Τηλ: {self._config.store_phone}")
         if self._config.store_tax_number:
             lines.append(f"ΑΦΜ: {self._config.store_tax_number}")
-        lines.append("─" * 40)
+        lines.append("─" * 42)
         lines.append(f"Παραγγελία #: {order.id}")
-        lines.append(f"Ημερομηνία: {order.received_at[:16] if order.received_at else '—'}")
-        lines.append(f"Πελάτης: {order.customer_name}")
-        lines.append("─" * 40)
+        lines.append(
+            f"Ημερομηνία:   "
+            f"{order.received_at[:16] if order.received_at else '—'}"
+        )
+        lines.append(f"Πελάτης:      {order.customer_name}")
+        lines.append("─" * 42)
 
         for item in order.items:
-            name_part = item.item_name[:25] if len(item.item_name) > 25 else item.item_name
+            lines.append(item.item_name)
             lines.append(
-                f"{name_part}"
-            )
-            lines.append(
-                f"  {item.quantity} x {sym}{item.unit_price:.2f} = {sym}{item.subtotal:.2f}"
+                f"  {item.quantity} x {sym}{item.unit_price:.2f}"
+                f" = {sym}{item.subtotal:.2f}"
             )
 
-        lines.append("─" * 40)
-        lines.append(f"ΣΥΝΟΛΟ: {sym}{order.total_amount:.2f}")
-        lines.append("─" * 40)
+        lines.append("─" * 42)
+        lines.append(f"ΣΥΝΟΛΟ:  {sym}{order.total_amount:.2f}")
+        lines.append("─" * 42)
         if order.notes:
             lines.append(f"Σημ: {order.notes}")
         lines.append("")
-        lines.append(self._config.receipt_footer)
+        if self._config.receipt_footer:
+            lines.append(self._config.receipt_footer)
         return lines
 
+    def _paint_lines(self, printer: QPrinter, lines: list[str]) -> None:
+        painter = QPainter(printer)
+        painter.setFont(QFont("Courier New", 10))
+        fm = painter.fontMetrics()
+        line_h = fm.height() + 4
+        x, y = 100, 100
+        for line in lines:
+            painter.drawText(x, y, line)
+            y += line_h
+            # New page if we're past the bottom margin
+            if y > printer.pageRect(QPrinter.Unit.DevicePixel).height() - 100:
+                printer.newPage()
+                y = 100
+        painter.end()
+
     def print_receipt(self, order, parent=None) -> bool:
+        """Open the system print dialog and print to the selected printer."""
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         printer.setPageSize(QPrinter.PageSize.A4)
 
         dlg = QPrintDialog(printer, parent)
+        dlg.setWindowTitle("Εκτύπωση Απόδειξης")
         if dlg.exec() != QPrintDialog.DialogCode.Accepted:
             return False
 
-        painter = QPainter(printer)
-        font = QFont("Courier New", 10)
-        painter.setFont(font)
+        lines = self.build_receipt_lines(order)
+        self._paint_lines(printer, lines)
+        logger.info("Εκτυπώθηκε απόδειξη παραγγελίας #%d", order.id)
+        return True
+
+    def save_as_pdf(self, order, parent=None) -> bool:
+        """Export the receipt to a PDF file chosen by the user."""
+        path, _ = QFileDialog.getSaveFileName(
+            parent,
+            "Αποθήκευση Απόδειξης ως PDF",
+            f"αποδειξη_{order.id}.pdf",
+            "PDF Files (*.pdf)"
+        )
+        if not path:
+            return False
+
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer.setPageSize(QPrinter.PageSize.A4)
+        printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+        printer.setOutputFileName(path)
 
         lines = self.build_receipt_lines(order)
-        fm = painter.fontMetrics()
-        line_height = fm.height() + 4
-        x = 100
-        y = 100
-
-        for line in lines:
-            painter.drawText(x, y, line)
-            y += line_height
-
-        painter.end()
-        logger.info("Εκτυπώθηκε απόδειξη παραγγελίας #%d", order.id)
+        self._paint_lines(printer, lines)
+        logger.info("Αποδειξη #%d αποθηκεύτηκε ως PDF: %s", order.id, path)
         return True
