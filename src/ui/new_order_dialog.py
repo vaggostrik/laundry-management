@@ -186,6 +186,10 @@ class NewOrderDialog(QDialog):
         svc_combo.clear()
         for svc_key, svc_data in services.items():
             svc_combo.addItem(svc_data['label'], svc_key)
+        # Ρητά ορίζουμε index=0 — σε ορισμένες εκδόσεις PyQt6 το addItem
+        # με blocked signals αφήνει currentIndex=-1, οπότε currentData()=None
+        if svc_combo.count() > 0:
+            svc_combo.setCurrentIndex(0)
         svc_combo.blockSignals(False)
 
     def _on_category_changed(self, row: int) -> None:

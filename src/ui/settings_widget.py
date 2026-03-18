@@ -32,7 +32,7 @@ class CategoryDialog(QDialog):
 
         self._key_edit = QLineEdit(key)
         self._key_edit.setPlaceholderText("π.χ. shirts")
-        form.addRow("Key (αγγλικά, χωρίς κενά):", self._key_edit)
+        form.addRow("Κωδικός (χωρίς κενά):", self._key_edit)
 
         self._label_edit = QLineEdit(label)
         self._label_edit.setPlaceholderText("π.χ. Πουκάμισα")
@@ -40,9 +40,9 @@ class CategoryDialog(QDialog):
 
         layout.addLayout(form)
 
-        note = QLabel("Το key χρησιμοποιείται εσωτερικά. Αν το αλλάξετε σε "
+        note = QLabel("Ο κωδικός χρησιμοποιείται εσωτερικά. Αν τον αλλάξετε σε "
                       "υπάρχουσα κατηγορία, νέες παραγγελίες θα χρησιμοποιούν "
-                      "το νέο key.")
+                      "τον νέο κωδικό.")
         note.setWordWrap(True)
         note.setStyleSheet("color: #888; font-size: 9pt;")
         layout.addWidget(note)
@@ -86,7 +86,7 @@ class ServiceDialog(QDialog):
 
         self._key_edit = QLineEdit(svc_key)
         self._key_edit.setPlaceholderText("π.χ. wash_iron")
-        form.addRow("Key (αγγλικά, χωρίς κενά):", self._key_edit)
+        form.addRow("Κωδικός (χωρίς κενά):", self._key_edit)
 
         self._label_edit = QLineEdit(label)
         self._label_edit.setPlaceholderText("π.χ. Πλύσιμο & Σιδέρωμα")
@@ -262,7 +262,7 @@ class SettingsWidget(QWidget):
 
         # Tree: 3 columns — Ονομασία | Key | Τιμή
         self._tree = QTreeWidget()
-        self._tree.setHeaderLabels(["Ονομασία", "Key", "Τιμή"])
+        self._tree.setHeaderLabels(["Ονομασία", "Κωδικός", "Τιμή"])
         self._tree.setColumnWidth(0, 260)
         self._tree.setColumnWidth(1, 140)
         self._tree.setColumnWidth(2, 80)
