@@ -9,7 +9,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFormLayout, QLineEdit, QTextEdit, QTreeWidget, QTreeWidgetItem,
     QMessageBox, QTabWidget, QDialog, QDialogButtonBox,
-    QDoubleSpinBox, QHeaderView
+    QDoubleSpinBox, QHeaderView, QFileDialog, QTableWidget,
+    QTableWidgetItem, QSizePolicy
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -133,9 +134,12 @@ class ServiceDialog(QDialog):
 # ── Main widget ───────────────────────────────────────────────────────────────
 
 class SettingsWidget(QWidget):
-    def __init__(self, config, parent=None):
+    def __init__(self, config, backup_svc=None, db_path: str = "", parent=None):
         super().__init__(parent)
-        self._config = config
+        self._config     = config
+        self._backup_svc = backup_svc
+        self._db_path    = db_path
+        self._backup_dir = ""        # remembered between sessions in-memory
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -150,6 +154,7 @@ class SettingsWidget(QWidget):
         tabs = QTabWidget()
         tabs.addTab(self._build_store_tab(), "Στοιχεία Καταστήματος")
         tabs.addTab(self._build_pricing_tab(), "Τιμοκατάλογος")
+        tabs.addTab(self._build_backup_tab(), "Αντίγραφα Ασφαλείας")
         layout.addWidget(tabs)
 
     # ── Store tab ─────────────────────────────────────────────────────────────
@@ -442,3 +447,188 @@ class SettingsWidget(QWidget):
         except Exception as e:
             logger.error("Σφάλμα διαγραφής υπηρεσίας: %s", e, exc_info=True)
             QMessageBox.critical(self, "Σφάλμα", f"Σφάλμα: {e}")
+
+    # ── Backup tab ────────────────────────────────────────────────────────────
+
+    def _build_backup_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        if self._backup_svc is None:
+            layout.addWidget(QLabel("Backup service μη διαθέσιμο."))
+            layout.addStretch()
+            return widget
+
+        # ── Backup folder row ─────────────────────────────────────────────────
+        folder_layout = QHBoxLayout()
+        folder_layout.addWidget(QLabel("Φάκελος backup:"))
+        self._backup_dir_edit = QLineEdit()
+        self._backup_dir_edit.setReadOnly(True)
+        self._backup_dir_edit.setPlaceholderText("Επιλέξτε φάκελο…")
+        folder_layout.addWidget(self._backup_dir_edit)
+        browse_btn = QPushButton("Επιλογή…")
+        browse_btn.clicked.connect(self._on_browse_backup_dir)
+        folder_layout.addWidget(browse_btn)
+        layout.addLayout(folder_layout)
+
+        # ── Action buttons ────────────────────────────────────────────────────
+        action_layout = QHBoxLayout()
+
+        backup_btn = QPushButton("💾  Δημιουργία Αντιγράφου Τώρα")
+        backup_btn.setStyleSheet(
+            "QPushButton { background: #3498db; color: white; border-radius: 4px; "
+            "padding: 8px 16px; font-weight: bold; }"
+            "QPushButton:hover { background: #2980b9; }"
+        )
+        backup_btn.clicked.connect(self._on_create_backup)
+        action_layout.addWidget(backup_btn)
+
+        refresh_btn = QPushButton("🔄  Ανανέωση Λίστας")
+        refresh_btn.clicked.connect(self._refresh_backup_list)
+        action_layout.addWidget(refresh_btn)
+
+        action_layout.addStretch()
+        layout.addLayout(action_layout)
+
+        # ── Backup list ───────────────────────────────────────────────────────
+        layout.addWidget(QLabel("Αποθηκευμένα αντίγραφα:"))
+
+        self._backup_table = QTableWidget(0, 3)
+        self._backup_table.setHorizontalHeaderLabels(
+            ["Αρχείο", "Ημερομηνία", "Μέγεθος"])
+        self._backup_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self._backup_table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows)
+        self._backup_table.setSelectionMode(
+            QTableWidget.SelectionMode.SingleSelection)
+        self._backup_table.setAlternatingRowColors(True)
+        self._backup_table.verticalHeader().setVisible(False)
+        self._backup_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch)
+        self._backup_table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.ResizeToContents)
+        self._backup_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.ResizeToContents)
+        self._backup_table.itemSelectionChanged.connect(
+            self._on_backup_selection_changed)
+        layout.addWidget(self._backup_table)
+
+        # ── Restore button ────────────────────────────────────────────────────
+        restore_layout = QHBoxLayout()
+        self._restore_btn = QPushButton("⚠️  Επαναφορά Επιλεγμένου")
+        self._restore_btn.setEnabled(False)
+        self._restore_btn.setStyleSheet(
+            "QPushButton { background: #e67e22; color: white; border-radius: 4px; "
+            "padding: 8px 16px; font-weight: bold; }"
+            "QPushButton:disabled { background: #bdc3c7; color: white; }"
+            "QPushButton:hover:!disabled { background: #d35400; }"
+        )
+        self._restore_btn.clicked.connect(self._on_restore)
+        restore_layout.addWidget(self._restore_btn)
+        restore_layout.addStretch()
+        layout.addLayout(restore_layout)
+
+        note = QLabel(
+            "Μετά την επαναφορά η εφαρμογή πρέπει να επανεκκινηθεί."
+        )
+        note.setStyleSheet("color: #e74c3c; font-size: 9pt;")
+        layout.addWidget(note)
+
+        return widget
+
+    def _on_browse_backup_dir(self) -> None:
+        path = QFileDialog.getExistingDirectory(
+            self, "Επιλογή Φακέλου Backup",
+            self._backup_dir or os.path.expanduser("~")
+        )
+        if path:
+            self._backup_dir = path
+            self._backup_dir_edit.setText(path)
+            self._refresh_backup_list()
+
+    def _on_create_backup(self) -> None:
+        if not self._backup_dir:
+            QMessageBox.warning(self, "Προσοχή",
+                                "Επιλέξτε πρώτα φάκελο αποθήκευσης.")
+            return
+        try:
+            zip_path = self._backup_svc.create_backup(self._backup_dir)
+            self._refresh_backup_list()
+            name = os.path.basename(zip_path)
+            size = os.path.getsize(zip_path) / 1024
+            QMessageBox.information(
+                self, "Επιτυχία",
+                f"Αντίγραφο ασφαλείας δημιουργήθηκε:\n{name}\n({size:.1f} KB)"
+            )
+        except Exception as e:
+            logger.error("Σφάλμα δημιουργίας backup: %s", e, exc_info=True)
+            QMessageBox.critical(self, "Σφάλμα",
+                                 f"Δεν ήταν δυνατή η δημιουργία backup:\n{e}")
+
+    def _refresh_backup_list(self) -> None:
+        if not self._backup_dir:
+            return
+        backups = self._backup_svc.list_backups(self._backup_dir)
+        self._backup_table.setRowCount(len(backups))
+        for row, b in enumerate(backups):
+            self._backup_table.setItem(row, 0, QTableWidgetItem(b['name']))
+            self._backup_table.setItem(row, 1, QTableWidgetItem(b['created_at']))
+            self._backup_table.setItem(row, 2,
+                                       QTableWidgetItem(f"{b['size_kb']:.1f} KB"))
+            self._backup_table.item(row, 0).setData(
+                Qt.ItemDataRole.UserRole, b['path'])
+        self._on_backup_selection_changed()
+
+    def _on_backup_selection_changed(self) -> None:
+        self._restore_btn.setEnabled(
+            len(self._backup_table.selectedItems()) > 0)
+
+    def _get_selected_backup_path(self) -> str | None:
+        row = self._backup_table.currentRow()
+        item = self._backup_table.item(row, 0)
+        if item:
+            return item.data(Qt.ItemDataRole.UserRole)
+        return None
+
+    def _on_restore(self) -> None:
+        zip_path = self._get_selected_backup_path()
+        if not zip_path:
+            return
+        try:
+            info = self._backup_svc.inspect_backup(zip_path)
+        except Exception as e:
+            QMessageBox.critical(self, "Σφάλμα", f"Μη έγκυρο backup:\n{e}")
+            return
+
+        msg = (
+            f"Επαναφορά από:\n{os.path.basename(zip_path)}\n\n"
+            f"Περιεχόμενο: "
+            f"{'βάση δεδομένων' if info['has_db'] else ''}"
+            f"{' + ' if info['has_db'] and info['has_config'] else ''}"
+            f"{'config.json' if info['has_config'] else ''}\n\n"
+            f"⚠️  Τα τρέχοντα δεδομένα θα αντικατασταθούν!\n"
+            f"Η εφαρμογή πρέπει να επανεκκινηθεί μετά.\n\n"
+            f"Συνέχεια;"
+        )
+        reply = QMessageBox.question(
+            self, "Επιβεβαίωση Επαναφοράς", msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            restored = self._backup_svc.restore_backup(zip_path, self._db_path)
+            if 'config.json' in restored:
+                self._config.reload()
+            QMessageBox.information(
+                self, "Επαναφορά Ολοκληρώθηκε",
+                "Τα δεδομένα επαναφέρθηκαν επιτυχώς.\n\n"
+                "Παρακαλώ κλείστε και ανοίξτε ξανά την εφαρμογή."
+            )
+        except Exception as e:
+            logger.error("Σφάλμα επαναφοράς: %s", e, exc_info=True)
+            QMessageBox.critical(self, "Σφάλμα",
+                                 f"Σφάλμα κατά την επαναφορά:\n{e}")

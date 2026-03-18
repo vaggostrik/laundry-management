@@ -65,7 +65,7 @@ def main():
         with open(qss_path, encoding='utf-8') as f:
             app.setStyleSheet(f.read())
 
-    window = MainWindow(db_conn, config)
+    window = MainWindow(db_conn, config, db_path=db_path)
     window.show()
 
     sys.exit(app.exec())

@@ -17,14 +17,17 @@ from src.database.report_repo import ReportRepository
 from src.services.customer_service import CustomerService
 from src.services.order_service import OrderService
 from src.services.report_service import ReportService
+from src.services.backup_service import BackupService
 
 logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db_conn: DatabaseConnection, config):
+    def __init__(self, db_conn: DatabaseConnection, config, db_path: str = ""):
         super().__init__()
-        self._config = config
+        self._config  = config
+        self._db_conn = db_conn
+        self._db_path = db_path
         conn = db_conn.get_connection()
 
         # Repos
@@ -36,6 +39,7 @@ class MainWindow(QMainWindow):
         self._customer_svc = CustomerService(self._customer_repo)
         self._order_svc = OrderService(self._order_repo, self._customer_repo, config)
         self._report_svc = ReportService(self._report_repo, config)
+        self._backup_svc = BackupService(db_conn, config._path)
 
         self.setWindowTitle(f"Διαχείριση Πλυντηρίου — {config.store_name}")
         self.setMinimumSize(1000, 650)
@@ -136,7 +140,9 @@ class MainWindow(QMainWindow):
 
     def _create_settings(self) -> QWidget:
         from src.ui.settings_widget import SettingsWidget
-        return SettingsWidget(self._config)
+        return SettingsWidget(self._config,
+                              backup_svc=self._backup_svc,
+                              db_path=self._db_path)
 
     @pyqtSlot(int)
     def _on_nav_clicked(self, index: int) -> None:
